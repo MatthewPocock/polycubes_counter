@@ -1,8 +1,7 @@
 import numpy as np
-import sqlite3
-import pickle
 import time
-import os
+import click
+from cache_utils import *
 
 
 def rotations24(polycube):
@@ -27,7 +26,7 @@ def get_neighbors(i, j, k):
     return [(i + 1, j, k), (i - 1, j, k), (i, j + 1, k), (i, j - 1, k), (i, j, k + 1), (i, j, k - 1)]
 
 
-def expand(array, dir):
+def expand_3d_array(array, dir):
     if dir == 'right':
         padding_array = np.zeros((array.shape[0], array.shape[1], 1))
         new_array = np.concatenate((array, padding_array), axis=2)
@@ -51,7 +50,7 @@ def expand(array, dir):
     return new_array
 
 
-def enumerate_cube(polycube_array):
+def expand_cube(polycube_array):
     expanded_cubes = []
     shape = polycube_array.shape
 
@@ -64,22 +63,22 @@ def enumerate_cube(polycube_array):
 
                         # Check out-of-bounds & expand array
                         if x < 0:
-                            new_polycube = expand(polycube_array, 'towards')
+                            new_polycube = expand_3d_array(polycube_array, 'towards')
                             x += 1
                         elif x > shape[0] - 1:
-                            new_polycube = expand(polycube_array, 'away')
+                            new_polycube = expand_3d_array(polycube_array, 'away')
 
                         elif y < 0:
-                            new_polycube = expand(polycube_array, 'up')
+                            new_polycube = expand_3d_array(polycube_array, 'up')
                             y += 1
                         elif y > shape[1] - 1:
-                            new_polycube = expand(polycube_array, 'down')
+                            new_polycube = expand_3d_array(polycube_array, 'down')
 
                         elif z < 0:
-                            new_polycube = expand(polycube_array, 'left')
+                            new_polycube = expand_3d_array(polycube_array, 'left')
                             z += 1
                         elif z > shape[2] - 1:
-                            new_polycube = expand(polycube_array, 'right')
+                            new_polycube = expand_3d_array(polycube_array, 'right')
 
                         # Check if the cube position is valid and unfilled
                         elif 0 <= x < shape[0] and 0 <= y < shape[1] and 0 <= z < shape[2] and polycube_array[x, y, z] == 0:
@@ -94,11 +93,11 @@ def enumerate_cube(polycube_array):
     return expanded_cubes
 
 
-def compute_enumerations(prev_cubes):
+def compute_next_cubes(prev_cubes):
     new_polycubes = []
     cube_di = {}
     for prev_cube in prev_cubes:
-        enumerated_cubes = enumerate_cube(prev_cube)
+        enumerated_cubes = expand_cube(prev_cube)
         for cube in enumerated_cubes:
             shape_bytes = bytes(str(cube.shape), 'utf-8')
             data_bytes = cube.tobytes()
@@ -122,70 +121,42 @@ def compute_enumerations(prev_cubes):
     return new_polycubes
 
 
-def setup_directory():
-    # Create directory if it doesn't exist
-    if not os.path.exists('saved_polycubes'):
-        os.makedirs('saved_polycubes')
+@click.command()
+@click.argument("n", type=int)
+@click.option('--no-cache', is_flag=True, default=False, help='Do not use cache and do not cache results')
+def generate_polycubes(n, no_cache):
+    # Starting polycube
+    polycubes = [np.array([[[1]]])]
 
+    # Only set up the directory and check for max_n if caching is not disabled
+    if not no_cache:
+        setup_directory()
+        max_n = get_max_n()
 
-def save_polycubes(n, polycubes):
-    with open(f'saved_polycubes/polycube_{n}.pkl', 'wb') as f:
-        pickle.dump(polycubes, f)
-
-    print(f"Saved polycubes for n={n}")
-
-
-def fetch_polycubes(n):
-    filepath = f'saved_polycubes/polycube_{n}.pkl'
-
-    if os.path.exists(filepath):
-        with open(filepath, 'rb') as f:
-            return pickle.load(f)
+        # If the directory is empty, initialize with n=1 polycube
+        if not max_n:
+            save_polycubes(1, polycubes)
+            max_n = 1
+        # if n already computed, just fetch result and return
+        elif n <= max_n:
+            print(f'{len(fetch_polycubes(n))} cubes')
+            return
+        else:
+            polycubes = fetch_polycubes(max_n)
     else:
-        return []
-
-
-def get_max_n():
-    saved_files = [f for f in os.listdir('saved_polycubes') if f.startswith('polycube_') and f.endswith('.pkl')]
-
-    if not saved_files:
-        return 0
-
-    # Extract the numbers from filenames and get the max
-    max_n = max([int(file.split('_')[1].split('.')[0]) for file in saved_files])
-    return max_n
-
-
-def main(n):
-    setup_directory()
-    max_n = get_max_n()
-
-    # If the directory is empty, initialize with n=1 polycube
-    if not max_n:
-        polycube = np.zeros((1, 1, 1))
-        polycube[0, 0, 0] = 1
-        save_polycubes(1, [polycube])
-        max_n = 1
-
-    # If we have already computed for the given n, just fetch it
-    if n <= max_n:
-        return fetch_polycubes(n)
+        max_n = 1  # You begin with n=1 polycube
 
     # If n > max_n, compute up to n polycube
-    prev_polycubes = fetch_polycubes(max_n) if max_n else []
-    i = max_n + 1
-    while i <= n:
+    for i in range(max_n + 1, n + 1):
         print(f'computing enumerations for n={i}...')
-        new_polycubes = compute_enumerations(prev_polycubes)
-        # Save polycubes to the directory
-        save_polycubes(i, new_polycubes)
+        polycubes = compute_next_cubes(polycubes)
 
-        print(f'{len(new_polycubes)} cubes')
-        prev_polycubes = new_polycubes
-        i += 1
+        # Only save if caching is not disabled
+        if not no_cache:
+            save_polycubes(i, polycubes)
 
-    return fetch_polycubes(n)
+    print(f'Found {len(polycubes)} cubes')
 
 
 if __name__ == "__main__":
-    main(n=9)
+    generate_polycubes()
