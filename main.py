@@ -148,10 +148,13 @@ def generate_polycubes(n, no_cache):
 
     # If n > max_n, compute up to n polycube
     for i in range(max_n + 1, n + 1):
+        start_time = time.time()
         print(f'computing enumerations for n={i}...')
         polycubes = compute_next_cubes(polycubes)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f'Computation for n={i} took {elapsed_time:.2f} seconds.')
 
-        # Only save if caching is not disabled
         if not no_cache:
             save_polycubes(i, polycubes)
 
