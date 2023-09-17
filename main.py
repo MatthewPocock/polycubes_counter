@@ -2,6 +2,7 @@ import numpy as np
 import sqlite3
 import pickle
 import time
+import os
 
 
 def rotations24(polycube):
@@ -121,72 +122,45 @@ def compute_enumerations(prev_cubes):
     return new_polycubes
 
 
-def setup_database():
-    conn = sqlite3.connect('polycubes.db')
-    cursor = conn.cursor()
-
-    # Create table if it doesn't exist
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS polycubes (
-            n INTEGER PRIMARY KEY,
-            cubes BLOB
-)
-    ''')
-
-    conn.commit()
-    conn.close()
+def setup_directory():
+    # Create directory if it doesn't exist
+    if not os.path.exists('saved_polycubes'):
+        os.makedirs('saved_polycubes')
 
 
 def save_polycubes(n, polycubes):
-    conn = sqlite3.connect('polycubes.db')
-    cursor = conn.cursor()
-    start_time = time.time()
+    with open(f'saved_polycubes/polycube_{n}.pkl', 'wb') as f:
+        pickle.dump(polycubes, f)
 
-    binary = pickle.dumps(polycubes)
-
-    cursor.execute("INSERT OR REPLACE INTO polycubes (n, cubes) VALUES (?, ?)", (n, binary))
-
-    conn.commit()
-    conn.close()
-
-    end_time = time.time()
-    print(f"Time taken to save polycubes for n={n}: {end_time - start_time:.2f} seconds")
+    print(f"Saved polycubes for n={n}")
 
 
 def fetch_polycubes(n):
-    conn = sqlite3.connect('polycubes.db')
-    cursor = conn.cursor()
+    filepath = f'saved_polycubes/polycube_{n}.pkl'
 
-    cursor.execute("SELECT cubes FROM polycubes WHERE n=?", (n,))
-    result = cursor.fetchone()
-
-    # If no result is found
-    if not result:
+    if os.path.exists(filepath):
+        with open(filepath, 'rb') as f:
+            return pickle.load(f)
+    else:
         return []
-
-    # Convert binary data back to original polycubes form
-    polycubes = pickle.loads(result[0])
-
-    conn.close()
-    return polycubes
 
 
 def get_max_n():
-    conn = sqlite3.connect('polycubes.db')
-    cursor = conn.cursor()
+    saved_files = [f for f in os.listdir('saved_polycubes') if f.startswith('polycube_') and f.endswith('.pkl')]
 
-    cursor.execute("SELECT MAX(n) FROM polycubes")
-    max_n = cursor.fetchone()[0]
+    if not saved_files:
+        return 0
 
-    conn.close()
-    return max_n or 0  # return 0 if no records found
+    # Extract the numbers from filenames and get the max
+    max_n = max([int(file.split('_')[1].split('.')[0]) for file in saved_files])
+    return max_n
 
 
 def main(n):
-    setup_database()
+    setup_directory()
     max_n = get_max_n()
 
-    # If the database is empty, initialize with n=1 polycube
+    # If the directory is empty, initialize with n=1 polycube
     if not max_n:
         polycube = np.zeros((1, 1, 1))
         polycube[0, 0, 0] = 1
@@ -203,7 +177,7 @@ def main(n):
     while i <= n:
         print(f'computing enumerations for n={i}...')
         new_polycubes = compute_enumerations(prev_polycubes)
-        # Save polycubes to the database
+        # Save polycubes to the directory
         save_polycubes(i, new_polycubes)
 
         print(f'{len(new_polycubes)} cubes')
