@@ -10,7 +10,8 @@ def rotations24(polycube):
     """
     def rotations4(polycube, axes):
         """List the four rotations of the given 3d array in the plane spanned by the given axes."""
-        for i in range(4):
+        yield polycube  # no need to rotate when i=0
+        for i in range(1, 4):
             yield np.rot90(polycube, i, axes)
 
     yield from rotations4(polycube, (1, 2))
@@ -82,10 +83,9 @@ def expand_cube(polycube_array):
 
                         # Check if the cube position is valid and unfilled
                         elif 0 <= x < shape[0] and 0 <= y < shape[1] and 0 <= z < shape[2] and polycube_array[x, y, z] == 0:
-                            pass  # Everything is okay, we can set the cube in the next step
-
+                            pass
                         else:
-                            continue  # Move to the next iteration, as the cube is already filled
+                            continue
 
                         new_polycube[x, y, z] = 1
                         expanded_cubes.append(new_polycube)
@@ -96,29 +96,22 @@ def expand_cube(polycube_array):
 def compute_next_cubes(prev_cubes):
     new_polycubes = []
     cube_di = {}
+
     for prev_cube in prev_cubes:
         enumerated_cubes = expand_cube(prev_cube)
+
         for cube in enumerated_cubes:
-            shape_bytes = bytes(str(cube.shape), 'utf-8')
-            data_bytes = cube.tobytes()
-            hashed_cube = hash(shape_bytes + data_bytes)
-            if hashed_cube not in cube_di.keys():
-                found = False
-                rotated_cube_gen = rotations24(cube)
-                while not found:
-                    try:
-                        rotated_cube = next(rotated_cube_gen)
-                        rotated_shape_bytes = bytes(str(rotated_cube.shape), 'utf-8')
-                        rotated_data_bytes = rotated_cube.tobytes()
-                        rotated_hashed_cube = hash(rotated_shape_bytes + rotated_data_bytes)
-                        if rotated_hashed_cube in cube_di.keys():
-                            found = True
-                    except StopIteration:
-                        break
-                if found is False:
-                    cube_di[hashed_cube] = cube
-                    new_polycubes.append(cube)
+            if not any(hash_cube(rot_cube) in cube_di for rot_cube in rotations24(cube)):
+                new_polycubes.append(cube)
+                cube_di[hash_cube(cube)] = cube
+
     return new_polycubes
+
+
+def hash_cube(cube):
+    shape_bytes = bytes(str(cube.shape), 'utf-8')
+    data_bytes = cube.tobytes()
+    return hash(shape_bytes + data_bytes)
 
 
 @click.command()
