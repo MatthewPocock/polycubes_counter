@@ -95,15 +95,15 @@ def expand_cube(polycube_array):
 
 def compute_next_cubes(prev_cubes):
     new_polycubes = []
-    cube_di = {}
+    cube_hashes = set()
 
     for prev_cube in prev_cubes:
         enumerated_cubes = expand_cube(prev_cube)
 
         for cube in enumerated_cubes:
-            if not any(hash_cube(rot_cube) in cube_di for rot_cube in rotations24(cube)):
+            if not any(hash_cube(rot_cube) in cube_hashes for rot_cube in rotations24(cube)):
                 new_polycubes.append(cube)
-                cube_di[hash_cube(cube)] = cube
+                cube_hashes.add(hash_cube(cube))
 
     return new_polycubes
 
