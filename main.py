@@ -58,7 +58,7 @@ def expand_cube(polycube_array):
     for i in range(shape[0]):
         for j in range(shape[1]):
             for k in range(shape[2]):
-                if polycube_array[i, j, k] == 1:
+                if polycube_array[i, j, k] is True:
                     for x, y, z in get_neighbors(i, j, k):
                         new_polycube = polycube_array.copy()
 
@@ -82,12 +82,12 @@ def expand_cube(polycube_array):
                             new_polycube = expand_3d_array(polycube_array, 'right')
 
                         # Check if the cube position is valid and unfilled
-                        elif 0 <= x < shape[0] and 0 <= y < shape[1] and 0 <= z < shape[2] and polycube_array[x, y, z] == 0:
+                        elif 0 <= x < shape[0] and 0 <= y < shape[1] and 0 <= z < shape[2] and polycube_array[x, y, z] is False:
                             pass
                         else:
                             continue
 
-                        new_polycube[x, y, z] = 1
+                        new_polycube[x, y, z] = True
                         expanded_cubes.append(new_polycube)
 
     return expanded_cubes
@@ -124,7 +124,7 @@ def hash_cube(cube):
 @click.option('--no-cache', is_flag=True, default=False, help='Do not use cache and do not cache results')
 def generate_polycubes(n, no_cache):
     # Starting polycube
-    polycubes = [np.array([[[1]]], dtype=np.int8)]
+    polycubes = [np.array([[[True]]], dtype=np.bool_)]
 
     # Only set up the directory and check for max_n if caching is not disabled
     if not no_cache:
