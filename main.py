@@ -93,12 +93,6 @@ def expand_cube(polycube_array):
     return expanded_cubes
 
 
-    #     if (idx % 100 == 0):
-    #         perc = round((idx / len(base_cubes)) * 100,2)
-    #         print(f"\rGenerating polycubes n={n}: {perc}%", end="")
-    #
-    # print(f"\rGenerating polycubes n={n}: 100%   ")
-
 def compute_next_cubes(prev_cubes):
     new_polycubes = []
     cube_hashes = set()
