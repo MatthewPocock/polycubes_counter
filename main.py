@@ -93,17 +93,28 @@ def expand_cube(polycube_array):
     return expanded_cubes
 
 
+    #     if (idx % 100 == 0):
+    #         perc = round((idx / len(base_cubes)) * 100,2)
+    #         print(f"\rGenerating polycubes n={n}: {perc}%", end="")
+    #
+    # print(f"\rGenerating polycubes n={n}: 100%   ")
+
 def compute_next_cubes(prev_cubes):
     new_polycubes = []
     cube_hashes = set()
 
-    for prev_cube in prev_cubes:
+    for idx, prev_cube in enumerate(prev_cubes):
         enumerated_cubes = expand_cube(prev_cube)
 
         for cube in enumerated_cubes:
             if not any(hash_cube(rot_cube) in cube_hashes for rot_cube in rotations24(cube)):
                 new_polycubes.append(cube)
                 cube_hashes.add(hash_cube(cube))
+
+            if (idx % 500 == 0):
+                perc = round((idx / len(prev_cubes)) * 100,2)
+                print(f"\r  ...{perc}% complete", end="")
+    print(f"\r  ...100.00% complete")
 
     return new_polycubes
 
@@ -142,11 +153,11 @@ def generate_polycubes(n, no_cache):
     # If n > max_n, compute up to n polycube
     for i in range(max_n + 1, n + 1):
         start_time = time.time()
-        print(f'computing enumerations for n={i}...')
+        print(f'computing enumerations for n={i}:')
         polycubes = compute_next_cubes(polycubes)
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f'Computation for n={i} took {elapsed_time:.2f} seconds.')
+        print(f'n={i} took {elapsed_time:.2f} seconds.\n')
 
         if not no_cache:
             save_polycubes(i, polycubes)
@@ -156,3 +167,4 @@ def generate_polycubes(n, no_cache):
 
 if __name__ == "__main__":
     generate_polycubes()
+
