@@ -130,7 +130,7 @@ def hash_cube(cube):
 @click.option('--no-cache', is_flag=True, default=False, help='Do not use cache and do not cache results')
 def generate_polycubes(n, no_cache):
     # Starting polycube
-    polycubes = [np.array([[[1]]])]
+    polycubes = [np.array([[[1]]], dtype=np.int8)]
 
     # Only set up the directory and check for max_n if caching is not disabled
     if not no_cache:
