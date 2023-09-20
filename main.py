@@ -1,7 +1,19 @@
 import numpy as np
 import time
 import click
-from cache_utils import *
+import io
+from sql_utils import *
+
+
+def numpy_to_bytes(arr):
+    buffer = io.BytesIO()
+    np.save(buffer, arr)
+    return buffer.getvalue()
+
+
+def bytes_to_numpy(bytes_data):
+    buffer = io.BytesIO(bytes_data)
+    return np.load(buffer)
 
 
 def rotations24(polycube):
@@ -93,8 +105,7 @@ def expand_cube(polycube_array):
     return expanded_cubes
 
 
-def compute_next_cubes(prev_cubes):
-    new_polycubes = []
+def compute_next_cubes(prev_cubes, n, con):
     cube_hashes = set()
 
     for idx, prev_cube in enumerate(prev_cubes):
@@ -102,15 +113,14 @@ def compute_next_cubes(prev_cubes):
 
         for cube in enumerated_cubes:
             if not any(hash_cube(rot_cube) in cube_hashes for rot_cube in rotations24(cube)):
-                new_polycubes.append(cube)
+                with con:
+                    con.execute('INSERT INTO polycubes (n, data) VALUES (?, ?)', (n, numpy_to_bytes(cube)))
                 cube_hashes.add(hash_cube(cube))
 
-            if (idx % 500 == 0):
+            if idx % 500 == 0:
                 perc = round((idx / len(prev_cubes)) * 100,2)
                 print(f"\r  ...{perc}% complete", end="")
     print(f"\r  ...100.00% complete")
-
-    return new_polycubes
 
 
 def hash_cube(cube):
@@ -121,42 +131,31 @@ def hash_cube(cube):
 
 @click.command()
 @click.argument("n", type=int)
-@click.option('--no-cache', is_flag=True, default=False, help='Do not use cache and do not cache results')
-def generate_polycubes(n, no_cache):
-    # Starting polycube
-    polycubes = [np.array([[[1]]], dtype=np.int8)]
+# @click.option('--no-cache', is_flag=True, default=False, help='Do not use cache and do not cache results')
+def generate_polycubes(n):
+    con = setup_db()
+    max_n = 0
 
-    # Only set up the directory and check for max_n if caching is not disabled
-    if not no_cache:
-        setup_directory()
-        max_n = get_max_n()
-
-        # If the directory is empty, initialize with n=1 polycube
-        if not max_n:
-            save_polycubes(1, polycubes)
-            max_n = 1
-        # if n already computed, just fetch result and return
-        elif n <= max_n:
-            print(f'{len(fetch_polycubes(n))} cubes')
-            return
-        else:
-            polycubes = fetch_polycubes(max_n)
-    else:
-        max_n = 1  # You begin with n=1 polycube
+    if not max_n:
+        polycube = np.array([[[1]]], dtype=np.int8)
+        with con:
+            con.execute('INSERT INTO polycubes (n, data) VALUES (?, ?)', (1, numpy_to_bytes(polycube)))
+        max_n = 1
+    elif n <= max_n:
+        print(f'{len(fetch_polycubes(n))} cubes')  # TODO: can use sql to get length
+        return
 
     # If n > max_n, compute up to n polycube
     for i in range(max_n + 1, n + 1):
+        polycubes = fetch_polycubes(i-1)
         start_time = time.time()
         print(f'computing enumerations for n={i}:')
-        polycubes = compute_next_cubes(polycubes)
+        compute_next_cubes(polycubes, i, con)
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f'n={i} took {elapsed_time:.2f} seconds.\n')
 
-        if not no_cache:
-            save_polycubes(i, polycubes)
-
-    print(f'Found {len(polycubes)} cubes')
+    print(f'Found {len(fetch_polycubes(n))} cubes')
 
 
 if __name__ == "__main__":
