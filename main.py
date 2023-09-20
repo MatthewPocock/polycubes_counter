@@ -107,19 +107,31 @@ def expand_cube(polycube_array):
 
 def compute_next_cubes(prev_cubes, n, con):
     cube_hashes = set()
+    cubes_to_store = []
 
     for idx, prev_cube in enumerate(prev_cubes):
         enumerated_cubes = expand_cube(prev_cube)
 
         for cube in enumerated_cubes:
             if not any(hash_cube(rot_cube) in cube_hashes for rot_cube in rotations24(cube)):
-                with con:
-                    con.execute('INSERT INTO polycubes (n, data) VALUES (?, ?)', (n, numpy_to_bytes(cube)))
+                cubes_to_store.append(cube)
                 cube_hashes.add(hash_cube(cube))
 
-            if idx % 500 == 0:
-                perc = round((idx / len(prev_cubes)) * 100,2)
-                print(f"\r  ...{perc}% complete", end="")
+        if idx % 1000 == 0:
+            # log progress
+            perc = round((idx / len(prev_cubes)) * 100,2)
+            print(f"\r  ...{perc}% complete", end="")
+
+        if len(cubes_to_store) > 1000:
+            with con:
+                data_to_insert = [(n, numpy_to_bytes(cube)) for cube in cubes_to_store]
+                con.executemany('INSERT INTO polycubes (n, data) VALUES (?, ?)', data_to_insert)
+            cubes_to_store = []
+
+    with con:
+        data_to_insert = [(n, numpy_to_bytes(cube)) for cube in cubes_to_store]
+        con.executemany('INSERT INTO polycubes (n, data) VALUES (?, ?)', data_to_insert)
+
     print(f"\r  ...100.00% complete")
 
 
