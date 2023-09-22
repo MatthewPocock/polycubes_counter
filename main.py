@@ -174,4 +174,3 @@ def generate_polycubes(n):
 
 if __name__ == "__main__":
     generate_polycubes()
-

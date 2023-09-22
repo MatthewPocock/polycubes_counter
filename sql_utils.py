@@ -21,7 +21,6 @@ def setup_db():
             data BLOB NOT NULL
         );
     ''')
-    con.commit()
 
     cur.execute('''
         CREATE TABLE IF NOT EXISTS status (
