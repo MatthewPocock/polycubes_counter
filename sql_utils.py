@@ -15,7 +15,7 @@ def setup_db():
     cur = con.cursor()
 
     cur.execute('''
-        CREATE TABLE polycubes (
+        CREATE TABLE IF NOT EXISTS polycubes (
             id INTEGER PRIMARY KEY,
             n INTEGER NOT NULL,
             data BLOB NOT NULL
@@ -23,16 +23,26 @@ def setup_db():
     ''')
     con.commit()
 
-    # TODO: create table to track complete n & incomplete values of n
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS status (
+            n INTEGER PRIMARY KEY,
+            completed BOOLEAN NOT NULL  
+        );
+    ''')
+
+    cur.execute('''
+        INSERT OR IGNORE INTO status (n, completed)
+        VALUES (0, True);
+    ''')
+
+    cur.execute('''
+        DELETE FROM polycubes
+        WHERE n NOT IN (SELECT n FROM status WHERE completed = True);
+    ''')
+
+    con.commit()
 
     return con
-
-
-def save_polycubes(n, polycubes):
-    with open(f'polycube_cache/polycube_{n}.pkl', 'wb') as f:
-        pickle.dump(polycubes, f)
-
-    print(f"Saved polycubes for n={n}")
 
 
 def fetch_polycubes(n):
@@ -48,12 +58,17 @@ def fetch_polycubes(n):
 
 
 def get_max_n():
-    saved_files = [f for f in os.listdir('polycube_cache') if f.startswith('polycube_') and f.endswith('.pkl')]
-    if not saved_files:
+    con = sqlite3.connect("polycubes.db")
+    cur = con.cursor()
+
+    cur.execute("SELECT MAX(n) FROM polycubes")
+    result = cur.fetchone()
+    con.close()
+
+    if result and result[0] is not None:
+        return result[0]
+    else:
         return 0
-    # Extract the numbers from filenames and get the max
-    max_n = max([int(file.split('_')[1].split('.')[0]) for file in saved_files])
-    return max_n
 
 
 def count_polycubes(n):

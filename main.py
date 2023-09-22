@@ -131,6 +131,7 @@ def compute_next_cubes(prev_cubes, n, con):
     with con:
         data_to_insert = [(n, numpy_to_bytes(cube)) for cube in cubes_to_store]
         con.executemany('INSERT INTO polycubes (n, data) VALUES (?, ?)', data_to_insert)
+        con.execute('INSERT INTO status (n, completed) VALUES (?, ?)', (n, True))
 
     print(f"\r  ...100.00% complete")
 
@@ -146,12 +147,13 @@ def hash_cube(cube):
 # @click.option('--no-cache', is_flag=True, default=False, help='Do not use cache and do not cache results')
 def generate_polycubes(n):
     con = setup_db()
-    max_n = 0
+    max_n = get_max_n()
 
     if not max_n:
         polycube = np.array([[[1]]], dtype=np.int8)
         with con:
             con.execute('INSERT INTO polycubes (n, data) VALUES (?, ?)', (1, numpy_to_bytes(polycube)))
+            con.execute('INSERT INTO status (n, completed) VALUES (?, ?)', (1, True))
         max_n = 1
     elif n <= max_n:
         print(f'{count_polycubes(n)} cubes')
