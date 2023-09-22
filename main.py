@@ -154,7 +154,7 @@ def generate_polycubes(n):
             con.execute('INSERT INTO polycubes (n, data) VALUES (?, ?)', (1, numpy_to_bytes(polycube)))
         max_n = 1
     elif n <= max_n:
-        print(f'{len(fetch_polycubes(n))} cubes')  # TODO: can use sql to get length
+        print(f'{count_polycubes(n)} cubes')
         return
 
     # If n > max_n, compute up to n polycube
@@ -167,7 +167,7 @@ def generate_polycubes(n):
         elapsed_time = end_time - start_time
         print(f'n={i} took {elapsed_time:.2f} seconds.\n')
 
-    print(f'Found {len(fetch_polycubes(n))} cubes')
+    print(f'Found {count_polycubes(n)} cubes')
 
 
 if __name__ == "__main__":

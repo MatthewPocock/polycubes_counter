@@ -54,3 +54,14 @@ def get_max_n():
     # Extract the numbers from filenames and get the max
     max_n = max([int(file.split('_')[1].split('.')[0]) for file in saved_files])
     return max_n
+
+
+def count_polycubes(n):
+    con = sqlite3.connect("polycubes.db")
+
+    cur = con.cursor()
+    cur.execute("SELECT COUNT(*) FROM polycubes WHERE n=?", (n,))
+    count = cur.fetchone()[0]
+    con.close()
+
+    return count
