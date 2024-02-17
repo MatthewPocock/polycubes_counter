@@ -309,7 +309,9 @@ func isCanonical(nodes []Node) int {
 	return result
 }
 
-func CountPolyominoes(
+// CountPolycubes implements Redelmeier's algorithm to enumerate fixed polycubes w/ an additional isCanonical check
+// to determine if polycube is unique when considering rotations.
+func CountPolycubes(
 	graph *Graph,
 	depth int,
 	maxSize int,
@@ -354,16 +356,16 @@ func CountPolyominoes(
 			for _, neighbour := range graph.GetNeighbours(randomElement) {
 				oldNeighbours[neighbour]++
 			}
-			if depth == branchDepth { // parallelDepth is the depth at which to start parallelization
+			if depth == branchDepth { // branchDepth is the depth at which to start parallelization
 				wg.Add(1)
 				newOldNeighbours := copyMap(oldNeighbours)
 				untriedSetCopy := make([]Node, len(newUntriedSet), len(newUntriedSet)+len(newNeighbours))
 				copy(untriedSetCopy, newUntriedSet)
 				cellsAddedCopy := make([]Node, len(cellsAdded), len(cellsAdded)+1)
 				copy(cellsAddedCopy, cellsAdded)
-				go CountPolyominoes(graph, depth+1, maxSize, append(untriedSetCopy, newNeighbours...), append(cellsAddedCopy, randomElement), newOldNeighbours, ch, wg)
+				go CountPolycubes(graph, depth+1, maxSize, append(untriedSetCopy, newNeighbours...), append(cellsAddedCopy, randomElement), newOldNeighbours, ch, wg)
 			} else {
-				newCounts := CountPolyominoes(graph, depth+1, maxSize, append(newUntriedSet, newNeighbours...), append(cellsAdded, randomElement), oldNeighbours, ch, wg)
+				newCounts := CountPolycubes(graph, depth+1, maxSize, append(newUntriedSet, newNeighbours...), append(cellsAdded, randomElement), oldNeighbours, ch, wg)
 				for i := range elementCount["fixed"] {
 					elementCount["fixed"][i] += newCounts["fixed"][i]
 					elementCount["free3d"][i] += newCounts["free3d"][i]
@@ -445,7 +447,7 @@ func main() {
 
 	fmt.Printf("Total counts: \n\tFixed: []\n\tFree3D: []\n\tFree4D: []")
 	fmt.Printf("\r\033[%dA", 3)
-	count := CountPolyominoes(latticeGraph, 0, n, untriedSet, cellsAdded, oldNeighbours, ch, &wg)
+	count := CountPolycubes(latticeGraph, 0, n, untriedSet, cellsAdded, oldNeighbours, ch, &wg)
 	fmt.Printf("Total counts (100.00%%): \n\tFixed: %v\n\tFree3D: %v\n\tFree4D: %v\n", count["fixed"], count["free3d"], count["free4d"])
 	fmt.Println("Completed in:", time.Since(startTime))
 }
